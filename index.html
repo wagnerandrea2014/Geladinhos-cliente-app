@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover" />
+    <title>Geladinhos Andrea | App Cliente</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <style>
+        /* ===== MESMOS ESTILOS DO SITE, PORÉM SEM AS CLASSES .apk-card e .apk-download-btn ===== */
+        /* (copiei todo o CSS do site e removi as regras relacionadas a APK) */
+        /* Para não estourar o limite, use o mesmo conteúdo do style do site, mas apague os blocos .apk-card e .apk-download-btn */
+        /* Na prática, copie o CSS do site e remova as duas classes. */
+        /* Abaixo está o CSS completo do site já sem essas classes. */
+        .splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #c2185b, #e91e63); display: flex; justify-content: center; align-items: center; flex-direction: column; z-index: 2000; transition: opacity 0.6s ease, visibility 0.6s ease; opacity: 1; visibility: visible; color: white; font-family: 'Inter', sans-serif; }
+        .splash-screen.hide { opacity: 0; visibility: hidden; }
+        .splash-content { text-align: center; animation: floatScale 1.2s ease-out; }
+        .splash-icon { font-size: 5rem; margin-bottom: 1rem; animation: bounceIcon 1s infinite alternate; }
+        .splash-title { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 0.5rem; }
+        .splash-sub { font-size: 1rem; opacity: 0.9; }
+        .splash-loading { margin-top: 2rem; width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes bounceIcon { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.2); opacity: 1; } }
+        @keyframes floatScale { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        :root { --bg-body: #fef7f2; --bg-gradient: radial-gradient(circle at 10% 20%, rgba(255, 220, 230, 0.4) 0%, rgba(255, 245, 240, 0.2) 90%); --text-color: #2d2a2a; --card-bg: white; --card-border: rgba(0, 0, 0, 0.03); --sabor-bg: #fefaf8; --sabor-border: #ffe0e6; --estoque-bg: #f0eef0; --cart-item-border: #ffefef; --btn-secondary-bg: #f4ecec; --btn-secondary-border: #e2cdd2; --input-bg: #fffcfb; --input-border: #ffdbdf; --pix-box-bg: #fef3f7; --upload-bg: #fff9fb; --tracking-card-bg: linear-gradient(145deg, #f9f2ef, #fff5f0); --history-hover: #fff3ef; --support-card-bg: #fef2e9; --support-border: #ffdec2; --footer-color: #a57c7c; --toast-bg: #2c2c2ee6; --badge-pendente-bg: #fff3cd; --badge-pendente-text: #856404; --badge-preparando-bg: #cfe2ff; --badge-preparando-text: #084298; --badge-pronto-bg: #d1e7dd; --badge-pronto-text: #0f5132; --badge-retirado-bg: #e2e3e5; --badge-retirado-text: #41464b; --btn-cancel-bg: #dc3545; }
+        body.dark { --bg-body: #1e1a1a; --bg-gradient: radial-gradient(circle at 10% 20%, #2a1a1f 0%, #1a1215 90%); --text-color: #f0e6e6; --card-bg: #2a2424; --card-border: #3e2e2e; --sabor-bg: #352c2c; --sabor-border: #4a3a3a; --estoque-bg: #403535; --cart-item-border: #3e2e2e; --btn-secondary-bg: #3a3030; --btn-secondary-border: #5a4a4a; --input-bg: #2f2626; --input-border: #5a4a4a; --pix-box-bg: #382b2b; --upload-bg: #2f2626; --tracking-card-bg: #2f2626; --history-hover: #3e3030; --support-card-bg: #2f2626; --support-border: #5a3a3a; --footer-color: #b89494; --toast-bg: #1f1a1ae6; --badge-pendente-bg: #665c30; --badge-pendente-text: #ffecb3; --badge-preparando-bg: #1f4460; --badge-preparando-text: #cfe2ff; --badge-pronto-bg: #1f4a3a; --badge-pronto-text: #c8e6d9; --badge-retirado-bg: #4a3a3a; --badge-retirado-text: #ddd; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-body); background-image: var(--bg-gradient); color: var(--text-color); transition: background 0.2s, color 0.2s; padding: 0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+        .version-badge { position: fixed; top: 12px; left: 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); color: white; padding: 4px 12px; border-radius: 40px; font-size: 0.7rem; font-family: monospace; z-index: 1500; pointer-events: none; }
+        .dark-mode-toggle { position: fixed; bottom: 20px; right: 20px; background: var(--card-bg); border: 1px solid var(--sabor-border); border-radius: 60px; padding: 12px 16px; cursor: pointer; z-index: 1200; box-shadow: 0 2px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; font-weight: 500; transition: 0.2s; }
+        .dark-mode-toggle:hover { transform: scale(1.02); }
+        .top-notification { background: linear-gradient(95deg, #c2185b 0%, #e91e63 100%); color: white; padding: 12px 20px; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1100; }
+        .top-notification.show { display: flex; }
+        .notif-content { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .notif-badge { background: rgba(255,255,255,0.2); border-radius: 40px; padding: 5px 12px; font-weight: 600; font-size: 0.85rem; }
+        .notif-number { font-weight: 800; background: white; color: #c2185b; padding: 4px 12px; border-radius: 40px; font-family: monospace; font-size: 1rem; }
+        .btn-copy-num, .btn-cancel-notif { background: rgba(255,255,255,0.25); border: none; color: white; padding: 6px 14px; border-radius: 40px; cursor: pointer; font-size: 0.8rem; transition: 0.1s; }
+        .btn-cancel-notif { background: rgba(220, 53, 69, 0.8); }
+        .btn-copy-num:active, .btn-cancel-notif:active { transform: scale(0.96); }
+        .close-notif { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 0 8px; }
+        .hero { background: linear-gradient(105deg, #c2185b 0%, #e91e63 100%); border-radius: 2rem; padding: 2rem 1.5rem; margin-bottom: 2rem; text-align: center; color: white; box-shadow: 0 15px 30px -12px rgba(194, 24, 91, 0.3); }
+        .hero h1 { font-size: 2rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+        .hero p { opacity: 0.9; margin-top: 8px; font-weight: 500; }
+        .order-layout { display: grid; grid-template-columns: 1fr 360px; gap: 24px; }
+        @media (max-width: 800px) { .order-layout { grid-template-columns: 1fr; } }
+        .card { background: var(--card-bg); border-radius: 28px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 6px rgba(0, 0, 0, 0.05); border: 1px solid var(--card-border); transition: background 0.2s; }
+        .card-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 10px; border-left: 4px solid #e91e63; padding-left: 14px; color: var(--text-color); }
+        .retirada-badge { background: #e8f5e9; color: #2e7d32; border-radius: 40px; padding: 8px 16px; text-align: center; font-weight: 500; margin-bottom: 20px; display: inline-block; width: 100%; }
+        body.dark .retirada-badge { background: #2a5a2a; color: #c8e6c9; }
+        .sabores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .sabor-card { background: var(--sabor-bg); border-radius: 20px; padding: 12px 8px; text-align: center; border: 1px solid var(--sabor-border); transition: background 0.2s; }
+        .sabor-emoji { font-size: 2.5rem; margin-bottom: 6px; }
+        .sabor-nome { font-weight: 700; font-size: 1rem; margin-bottom: 4px; color: var(--text-color); }
+        .sabor-estoque { font-size: 0.7rem; background: var(--estoque-bg); display: inline-block; padding: 2px 10px; border-radius: 30px; color: var(--text-color); margin-bottom: 8px; }
+        .estoque-baixo { background: #ff9800 !important; color: #1e1a1a !important; font-weight: bold; }
+        .qtd-control { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 8px; }
+        .qtd-btn { background: #e91e63; color: white; border: none; width: 32px; height: 32px; border-radius: 40px; font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: 0.1s linear; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .qtd-btn:active { transform: scale(0.94); }
+        .qtd-btn:disabled { background: #cfcfcf; cursor: not-allowed; opacity: 0.6; }
+        .qtd-number { font-weight: 700; font-size: 1.2rem; min-width: 28px; text-align: center; color: var(--text-color); }
+        .cart-summary { position: sticky; top: 20px; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--cart-item-border); }
+        .cart-item-info { display: flex; flex-direction: column; }
+        .cart-item-name { font-weight: 600; color: var(--text-color); }
+        .cart-item-qty { font-size: 0.75rem; color: #e91e63; }
+        .remove-item { background: none; border: none; color: #ff7b89; cursor: pointer; font-size: 1rem; padding: 6px; }
+        .total-row { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.4rem; margin: 16px 0 10px; padding-top: 12px; border-top: 2px dashed #f0cfd8; color: var(--text-color); }
+        .btn-primary { background: #25D366; width: 100%; border: none; padding: 14px; font-weight: 700; font-size: 1.1rem; border-radius: 60px; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: 0.2s; margin-top: 16px; }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-primary:disabled { background: #bde0c0; cursor: default; }
+        .btn-secondary { background: var(--btn-secondary-bg); width: 100%; border: 1px solid var(--btn-secondary-border); padding: 10px; border-radius: 60px; font-weight: 500; margin-top: 12px; cursor: pointer; color: var(--text-color); }
+        .btn-cancel { background: #dc3545; color: white; border: none; width: 100%; padding: 10px; border-radius: 60px; font-weight: 600; margin-top: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        input, select, textarea { width: 100%; padding: 12px 16px; border-radius: 24px; border: 1px solid var(--input-border); background: var(--input-bg); font-family: 'Inter', sans-serif; transition: 0.2s; color: var(--text-color); }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #e91e63; box-shadow: 0 0 0 3px rgba(233,30,99,0.1); }
+        .pix-box { background: var(--pix-box-bg); border-radius: 20px; padding: 16px; text-align: center; margin-top: 12px; }
+        .pix-key-copy { background: white; padding: 10px; border-radius: 60px; display: inline-flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid #e91e63; margin: 12px 0; color: #2d2a2a; }
+        .upload-area { border: 1.5px dashed #e91e63; border-radius: 20px; padding: 12px; margin-top: 12px; cursor: pointer; background: var(--upload-bg); }
+        .notification-toast { position: fixed; bottom: 28px; left: 20px; right: 20px; max-width: 420px; margin: 0 auto; background: var(--toast-bg); color: white; padding: 14px 20px; border-radius: 60px; text-align: center; font-weight: 500; z-index: 1300; transform: translateY(100px); transition: 0.25s ease; }
+        .notification-toast.show { transform: translateY(0); }
+        .support-card { background: var(--support-card-bg); border: 1px solid var(--support-border); cursor: pointer; transition: all 0.2s; }
+        .support-card:hover { background: var(--history-hover); transform: translateY(-2px); }
+        footer { text-align: center; font-size: 0.75rem; margin-top: 2rem; color: var(--footer-color); }
+        .tracking-card, .history-card { background: var(--tracking-card-bg); }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 40px; font-weight: 600; font-size: 0.85rem; }
+        .status-pendente { background: var(--badge-pendente-bg); color: var(--badge-pendente-text); }
+        .status-preparando { background: var(--badge-preparando-bg); color: var(--badge-preparando-text); }
+        .status-pronto { background: var(--badge-pronto-bg); color: var(--badge-pronto-text); }
+        .status-retirado { background: var(--badge-retirado-bg); color: var(--badge-retirado-text); }
+        .pedido-info { margin-top: 16px; padding: 12px; background: var(--card-bg); border-radius: 20px; }
+        .search-group { display: flex; gap: 8px; margin-bottom: 16px; }
+        .search-group input { flex: 1; margin-bottom: 0; }
+        .btn-search { background: #e91e63; color: white; border: none; padding: 0 20px; border-radius: 40px; font-weight: 600; cursor: pointer; }
+        .history-list { max-height: 280px; overflow-y: auto; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--cart-item-border); cursor: pointer; transition: 0.1s; }
+        .history-item:hover { background: var(--history-hover); transform: translateX(3px); }
+        .history-item .info { flex: 1; }
+        .history-item .small { font-size: 0.7rem; color: var(--footer-color); }
+        .history-status { font-size: 0.7rem; font-weight: 600; }
+        .btn-repeat { background: #e91e63; color: white; border: none; border-radius: 30px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; margin-left: 8px; }
+        .empty-history { text-align: center; color: var(--footer-color); padding: 20px; }
+    </style>
+</head>
+<body>
+<div class="version-badge"><i class="fas fa-mobile-alt"></i> APP CLIENTE • Kodular</div>
+<div id="splash" class="splash-screen">
+    <div class="splash-content">
+        <div class="splash-icon"><i class="fas fa-ice-cream"></i></div>
+        <div class="splash-title">Geladinhos Andrea</div>
+        <div class="splash-sub">App oficial • Peça e acompanhe</div>
+        <div class="splash-loading"></div>
+    </div>
+</div>
+
+<div class="dark-mode-toggle" id="darkModeToggle">
+    <i class="fas fa-moon"></i> <span id="darkModeText">Modo escuro</span>
+</div>
+
+<div id="topNotif" class="top-notification">
+    <div class="notif-content">
+        <i class="fas fa-receipt"></i>
+        <span>Seu último pedido:</span>
+        <span class="notif-number" id="notifPedidoId">---</span>
+        <span id="notifStatusBadge" class="notif-badge">⏳ Pendente</span>
+        <button class="btn-copy-num" id="copyPedidoBtn"><i class="fas fa-copy"></i> Copiar</button>
+        <button class="btn-copy-num" onclick="prepararAcompanhamento()"><i class="fas fa-search"></i> Acompanhar</button>
+        <button class="btn-cancel-notif" id="cancelPedidoBtn" style="display: none;"><i class="fas fa-times-circle"></i> Cancelar</button>
+    </div>
+    <button class="close-notif" id="closeNotifBtn"><i class="fas fa-times"></i></button>
+</div>
+
+<div class="container" id="mainApp" style="opacity: 0; transition: opacity 0.5s ease;">
+    <div class="hero">
+        <h1><i class="fas fa-ice-cream"></i> Geladinhos Andrea</h1>
+        <p>Feitos com amor • Retire no balcão • R$ 2,00 cada</p>
+    </div>
+
+    <div class="order-layout">
+        <div>
+            <div class="card">
+                <div class="card-title"><i class="fas fa-user-circle"></i> Seus dados</div>
+                <input type="text" id="nomeCliente" placeholder="Nome completo *" style="margin-bottom: 12px;">
+                <div class="retirada-badge">
+                    <i class="fas fa-store"></i> Pedido para retirada no balcão<br>
+                    <small>Você busca no nosso ponto de venda. Avisaremos quando estiver pronto!</small>
+                </div>
+                <small style="color:#e91e63;"><i class="fas fa-info-circle"></i> * Campos obrigatórios</small>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-candy-cane"></i> Escolha seus sabores</div>
+                <div id="saboresContainer" class="sabores-grid"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-credit-card"></i> Forma de pagamento</div>
+                <select id="pagamentoSelect">
+                    <option value="">Selecionar</option>
+                    <option value="Pix">💳 Pix (pagamento antecipado)</option>
+                    <option value="Dinheiro">💵 Dinheiro (na retirada)</option>
+                    <option value="Cartão">💳 Cartão (na retirada)</option>
+                </select>
+                
+                <div id="pixDetalhe" style="display: none;">
+                    <div class="pix-box">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=00020126580014br.gov.bcb.pix013621f0574b-79b1-491b-b3d8-fa20ca8acd355204000053039865802BR5925Victor%20Gabriel%20De%20Sousa%20R6009Sao%20Paulo62290525REC67EC0B0C898972039229536304D344" width="140" alt="QR Code Pix">
+                        <p><strong>Victor Gabriel De Sousa</strong></p>
+                        <div class="pix-key-copy" onclick="copiarChavePix()">
+                            <i class="fas fa-copy"></i> <span id="pixChave">83996888600</span>
+                        </div>
+                        <div class="upload-area" onclick="document.getElementById('comprovanteInput').click()">
+                            <i class="fas fa-cloud-upload-alt"></i> Anexar comprovante <br>
+                            <small>Clique e selecione imagem/PDF</small>
+                            <input type="file" id="comprovanteInput" accept="image/*,.pdf" style="display:none">
+                            <span id="nomeComprovante" style="font-size:0.7rem; display:block; margin-top:6px;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dinheiroDetalhe" style="display: none; margin-top: 12px;">
+                    <input type="text" id="trocoPara" placeholder="Precisa de troco para quanto? Ex: R$ 50,00">
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-pencil-alt"></i> Observações</div>
+                <textarea rows="2" id="observacoes" placeholder="Algum recado? Sem cacau, horário de retirada..."></textarea>
+            </div>
+        </div>
+
+        <div class="cart-summary">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-shopping-bag"></i> Seu pedido</div>
+                <div id="cartItemsList" style="max-height: 320px; overflow-y: auto;">
+                    <div style="text-align: center; color: #bbb; padding: 20px;">Nenhum item adicionado</div>
+                </div>
+                <div class="total-row">
+                    <span>Total</span>
+                    <span id="totalValorSpan">R$ 0,00</span>
+                </div>
+                <div id="qtdTotalText" style="font-size:0.8rem; text-align:center; color:#bd7e8a;">0 geladinhos</div>
+                <button id="finalizarBtn" class="btn-primary"><i class="fas fa-check-circle"></i> Finalizar Pedido</button>
+                <button id="limparBtn" class="btn-secondary"><i class="fas fa-trash-alt"></i> Limpar carrinho</button>
+            </div>
+
+            <div class="card tracking-card">
+                <div class="card-title"><i class="fas fa-search"></i> Acompanhar pedido</div>
+                <div class="search-group">
+                    <input type="text" id="trackingId" placeholder="Número do pedido">
+                    <button class="btn-search" onclick="buscarPedido()"><i class="fas fa-search"></i></button>
+                </div>
+                <div id="trackingResult" style="display: none;">
+                    <div class="pedido-info">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                            <strong>Pedido #<span id="trackingNumero"></span></strong>
+                            <span id="trackingStatusBadge"></span>
+                        </div>
+                        <p style="margin-top: 12px;"><i class="fas fa-user"></i> <span id="trackingCliente"></span></p>
+                        <p><i class="fas fa-ice-cream"></i> Itens: <span id="trackingItens"></span></p>
+                        <p><i class="fas fa-credit-card"></i> Pagamento: <span id="trackingPagamento"></span></p>
+                        <p id="trackingObservacao" style="font-size:0.85rem;"></p>
+                        <hr><small><i class="fas fa-clock"></i> <span id="trackingData"></span></small>
+                        <button id="cancelTrackingBtn" class="btn-cancel" style="display: none; margin-top: 12px;"><i class="fas fa-times-circle"></i> Cancelar pedido</button>
+                    </div>
+                </div>
+                <div id="trackingNaoEncontrado" style="display: none; text-align: center; color: #e91e63; padding: 16px;">
+                    <i class="fas fa-exclamation-circle"></i> Pedido não encontrado.
+                </div>
+            </div>
+
+            <div class="card history-card">
+                <div class="card-title"><i class="fas fa-history"></i> Meus pedidos</div>
+                <div class="search-group">
+                    <input type="text" id="historyNameInput" placeholder="Seu nome (opcional)">
+                    <button class="btn-search" onclick="buscarHistorico()"><i class="fas fa-list"></i> Buscar</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <div class="empty-history">Carregando seus pedidos...</div>
+                </div>
+                <small style="display: block; margin-top: 8px; text-align: center; font-size: 0.7rem;">Clique em "Repetir" para adicionar ao carrinho</small>
+            </div>
+
+            <div style="font-size: 0.7rem; background: rgba(0,0,0,0.02); border-radius: 40px; padding: 8px; text-align: center;">
+                <i class="fas fa-shield-alt"></i> Pedido salvo e estoque atualizado
+            </div>
+        </div>
+    </div>
+    <footer>
+        <i class="fas fa-heart" style="color:#e91e63;"></i> Geladinhos caseiros com muito carinho • Andrea & equipe
+    </footer>
+</div>
+<div id="globalToast" class="notification-toast">✔️ Pedido realizado!</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCSEXgiZRp6TPMU6uxIhfBWzxFg-YZKro4",
+        authDomain: "geladinhos-cliente.firebaseapp.com",
+        projectId: "geladinhos-cliente",
+        storageBucket: "geladinhos-cliente.firebasestorage.app",
+        messagingSenderId: "868636179518",
+        appId: "1:868636179518:web:da8b19b713495165fe256f"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    const auth = firebase.auth();
+
+    let currentUserUid = null;
+    let authReady = false;
+    const PRECO = 2.00;
+    // SEM CONSTANTE WHATSAPP
+
+    let saboresConfig = {};
+    let estoqueAtual = {};
+    let quantidades = {};
+    let intervaloStatus = null;
+    let unsubscribeCardapio = null;
+    let comprovanteFile = null;
+
+    const saboresContainer = document.getElementById('saboresContainer');
+    const cartItemsList = document.getElementById('cartItemsList');
+    const totalValorSpan = document.getElementById('totalValorSpan');
+    const qtdTotalText = document.getElementById('qtdTotalText');
+    const finalizarBtn = document.getElementById('finalizarBtn');
+    const limparBtn = document.getElementById('limparBtn');
+    const pagamentoSelect = document.getElementById('pagamentoSelect');
+    const pixDetalhe = document.getElementById('pixDetalhe');
+    const dinheiroDetalhe = document.getElementById('dinheiroDetalhe');
+    const comprovanteInput = document.getElementById('comprovanteInput');
+    const nomeComprovanteSpan = document.getElementById('nomeComprovante');
+    const topNotif = document.getElementById('topNotif');
+    const notifPedidoIdSpan = document.getElementById('notifPedidoId');
+    const notifStatusBadge = document.getElementById('notifStatusBadge');
+    const copyPedidoBtn = document.getElementById('copyPedidoBtn');
+    const closeNotifBtn = document.getElementById('closeNotifBtn');
+    const cancelPedidoNotifBtn = document.getElementById('cancelPedidoBtn');
+    const historyNameInput = document.getElementById('historyNameInput');
+
+    function copiarTexto(texto, mensagem) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(texto).then(() => mostrarToast(mensagem)).catch(() => fallbackCopy(texto, mensagem));
+        } else {
+            fallbackCopy(texto, mensagem);
+        }
+    }
+    function fallbackCopy(texto, mensagem) {
+        const textarea = document.createElement('textarea');
+        textarea.value = texto;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        mostrarToast(mensagem);
+    }
+    function copiarChavePix() { copiarTexto('83996888600', 'Chave Pix copiada! ✅'); }
+    function copiarNumeroPedido() { const num = notifPedidoIdSpan.innerText; if (num && num !== '---') copiarTexto(num, `Número ${num} copiado!`); }
+
+    function initDarkMode() {
+        const darkMode = localStorage.getItem('darkMode') === 'true';
+        if (darkMode) document.body.classList.add('dark');
+        const toggle = document.getElementById('darkModeToggle');
+        const textSpan = document.getElementById('darkModeText');
+        if (darkMode) textSpan.innerText = 'Modo claro';
+        else textSpan.innerText = 'Modo escuro';
+        toggle.onclick = () => {
+            const isDark = document.body.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark);
+            textSpan.innerText = isDark ? 'Modo claro' : 'Modo escuro';
+        };
+    }
+
+    function mostrarToast(msg, erro = false) {
+        const toast = document.getElementById('globalToast');
+        toast.textContent = msg;
+        toast.style.background = erro ? '#c62828e6' : '#2c6e2ce6';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    function getLastPedidoId() { return localStorage.getItem('ultimoPedidoId'); }
+    function setLastPedidoId(id) { if(id) localStorage.setItem('ultimoPedidoId', id); }
+
+    async function cancelarPedido(pedidoId) {
+        if (!confirm("Tem certeza que deseja cancelar este pedido? O estoque será devolvido.")) return;
+        try {
+            await db.runTransaction(async (transaction) => {
+                const pedidoRef = db.collection('pedidos').doc(pedidoId);
+                const pedidoDoc = await transaction.get(pedidoRef);
+                if (!pedidoDoc.exists) throw new Error("Pedido não encontrado");
+                if (pedidoDoc.data().status !== 'pendente') throw new Error("Só é possível cancelar pedidos pendentes");
+                const cardapioRef = db.collection('config').doc('cardapio');
+                const cardapioDoc = await transaction.get(cardapioRef);
+                if (cardapioDoc.exists) {
+                    const estoqueAtualFire = cardapioDoc.data().estoque || {};
+                    const novoEstoque = { ...estoqueAtualFire };
+                    pedidoDoc.data().itens.forEach(item => {
+                        novoEstoque[item.sabor] = (novoEstoque[item.sabor] || 0) + item.quantidade;
+                    });
+                    transaction.update(cardapioRef, { estoque: novoEstoque });
+                }
+                transaction.delete(pedidoRef);
+            });
+            if (getLastPedidoId() === pedidoId) {
+                localStorage.removeItem('ultimoPedidoId');
+                if (intervaloStatus) clearInterval(intervaloStatus);
+                intervaloStatus = null;
+                topNotif.classList.remove('show');
+            }
+            mostrarToast(`Pedido #${pedidoId} cancelado com sucesso!`);
+            if (unsubscribeCardapio) {
+                unsubscribeCardapio();
+                iniciarListenerCardapio();
+            }
+            if (document.getElementById('trackingId').value === pedidoId) {
+                document.getElementById('trackingResult').style.display = 'none';
+                document.getElementById('trackingNaoEncontrado').style.display = 'block';
+            }
+        } catch (error) {
+            mostrarToast(error.message || "Erro ao cancelar pedido", true);
+        }
+    }
+
+    async function atualizarNotificacaoStatus() {
+        const pedidoId = getLastPedidoId();
+        if (!pedidoId) { 
+            topNotif.classList.remove('show'); 
+            if(cancelPedidoNotifBtn) cancelPedidoNotifBtn.style.display = 'none';
+            return; 
+        }
+        try {
+            const doc = await db.collection('pedidos').doc(pedidoId).get();
+            if (!doc.exists) { 
+                topNotif.classList.remove('show'); 
+                if(cancelPedidoNotifBtn) cancelPedidoNotifBtn.style.display = 'none';
+                return; 
+            }
+            const data = doc.data();
+            const status = data.status || 'pendente';
+            let statusText = '';
+            if (status === 'pendente') statusText = '⏳ Pendente';
+            else if (status === 'preparando') statusText = '🍳 Em preparo';
+            else if (status === 'pronto') statusText = '✅ Pronto para retirada';
+            else if (status === 'retirado') statusText = '📦 Retirado';
+            else statusText = status;
+            notifPedidoIdSpan.innerText = pedidoId;
+            notifStatusBadge.innerHTML = statusText;
+            topNotif.classList.add('show');
+            if (cancelPedidoNotifBtn) {
+                cancelPedidoNotifBtn.style.display = status === 'pendente' ? 'inline-flex' : 'none';
+                if (status === 'pendente') {
+                    cancelPedidoNotifBtn.onclick = () => cancelarPedido(pedidoId);
+                }
+            }
+            if (status === 'retirado') {
+                if (intervaloStatus) clearInterval(intervaloStatus);
+                setTimeout(() => { if (getLastPedidoId() === pedidoId) topNotif.classList.remove('show'); }, 8000);
+            }
+        } catch (error) { console.error("Erro status:", error); }
+    }
+
+    function iniciarMonitoramentoStatus() {
+        if (intervaloStatus) clearInterval(intervaloStatus);
+        intervaloStatus = setInterval(() => { if(getLastPedidoId()) atualizarNotificacaoStatus(); }, 10000);
+        atualizarNotificacaoStatus();
+    }
+
+    function prepararAcompanhamento() {
+        const num = notifPedidoIdSpan.innerText;
+        if (num && num !== '---') {
+            document.getElementById('trackingId').value = num;
+            buscarPedido();
+            document.getElementById('trackingId').scrollIntoView({behavior:'smooth'});
+        }
+    }
+    function fecharNotificacao() { topNotif.classList.remove('show'); if (intervaloStatus) clearInterval(intervaloStatus); intervaloStatus = null; }
+    copyPedidoBtn.onclick = copiarNumeroPedido;
+    closeNotifBtn.onclick = fecharNotificacao;
+
+    function iniciarListenerCardapio() {
+        if (unsubscribeCardapio) unsubscribeCardapio();
+        unsubscribeCardapio = db.collection('config').doc('cardapio').onSnapshot(doc => {
+            if (doc.exists) {
+                const data = doc.data();
+                saboresConfig = data.sabores || {};
+                estoqueAtual = data.estoque || {};
+                Object.keys(saboresConfig).forEach(s => { if (quantidades[s] === undefined) quantidades[s] = 0; });
+                renderizarSabores();
+            } else {
+                saboresConfig = { 'Biscoito': '🍪', 'Brigadeiro': '🍫', 'Coco': '🥥', 'Chocolate': '🍫', 'Flocos': '🌨️', 'Maracujá': '🍈', 'Morango': '🍓', 'Paçoca': '🥜', 'Oreo': '🍪', 'Ovomaltine': '🥤' };
+                estoqueAtual = {};
+                Object.keys(saboresConfig).forEach(s => estoqueAtual[s] = 30);
+                db.collection('config').doc('cardapio').set({ sabores: saboresConfig, estoque: estoqueAtual });
+                renderizarSabores();
+            }
+        }, error => { console.error("Erro no listener do cardápio:", error); mostrarToast("Erro ao carregar cardápio", true); });
+    }
+
+    function alterarQuantidade(sabor, delta) {
+        const atual = quantidades[sabor] || 0;
+        let novo = atual + delta;
+        if (novo < 0) novo = 0;
+        const maxEstoque = estoqueAtual[sabor] || 0;
+        if (novo > maxEstoque) { mostrarToast(`Estoque insuficiente: apenas ${maxEstoque} unidade(s) de ${sabor}`, true); return; }
+        quantidades[sabor] = novo;
+        const qtdSpan = document.getElementById(`qtd_display_${sabor.replace(/\s/g, '_')}`);
+        if (qtdSpan) qtdSpan.innerText = novo;
+        atualizarResumo();
+    }
+
+    function renderizarSabores() {
+        if (!saboresContainer) return;
+        saboresContainer.innerHTML = '';
+        const saboresOrdenados = Object.entries(saboresConfig).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR', { sensitivity: 'base' }));
+        saboresOrdenados.forEach(([sabor, emoji]) => {
+            const estoque = estoqueAtual[sabor] || 0;
+            const esgotado = estoque === 0;
+            const qtdSelecionada = quantidades[sabor] || 0;
+            const saborKey = sabor.replace(/\s/g, '_');
+            const estoqueBaixo = estoque > 0 && estoque <= 5;
+            const estoqueText = esgotado ? '⛔ Esgotado' : (estoqueBaixo ? `⚠️ Últimas! ${estoque} und.` : `📦 ${estoque} und.`);
+            const card = document.createElement('div'); card.className = 'sabor-card';
+            card.innerHTML = `
+                <div class="sabor-emoji">${emoji}</div>
+                <div class="sabor-nome">${sabor}</div>
+                <div class="sabor-estoque ${estoqueBaixo ? 'estoque-baixo' : ''}">${estoqueText}</div>
+                <div class="qtd-control">
+                    <button class="qtd-btn" id="minus_${saborKey}" ${esgotado ? 'disabled' : ''}>-</button>
+                    <span class="qtd-number" id="qtd_display_${saborKey}">${qtdSelecionada}</span>
+                    <button class="qtd-btn" id="plus_${saborKey}" ${esgotado ? 'disabled' : ''}>+</button>
+                </div>
+            `;
+            saboresContainer.appendChild(card);
+        });
+        saboresOrdenados.forEach(([sabor]) => {
+            const saborKey = sabor.replace(/\s/g, '_');
+            const minusBtn = document.getElementById(`minus_${saborKey}`);
+            const plusBtn = document.getElementById(`plus_${saborKey}`);
+            if (minusBtn) minusBtn.onclick = () => alterarQuantidade(sabor, -1);
+            if (plusBtn) plusBtn.onclick = () => alterarQuantidade(sabor, 1);
+        });
+        atualizarResumo();
+    }
+
+    function atualizarResumo() {
+        let totalUnidades = 0, totalValue = 0, itensArray = [];
+        for (const [sabor, qtd] of Object.entries(quantidades)) if (qtd > 0) { totalUnidades += qtd; totalValue += qtd * PRECO; itensArray.push({ sabor, qtd }); }
+        totalValorSpan.innerText = `R$ ${totalValue.toFixed(2).replace('.', ',')}`;
+        qtdTotalText.innerText = `${totalUnidades} geladinho${totalUnidades !== 1 ? 's' : ''}`;
+        finalizarBtn.disabled = (totalUnidades === 0);
+        if (itensArray.length === 0) { cartItemsList.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px;">Nenhum item adicionado</div>'; return; }
+        cartItemsList.innerHTML = '';
+        itensArray.forEach(({ sabor, qtd }) => {
+            const div = document.createElement('div'); div.className = 'cart-item';
+            div.innerHTML = `<div class="cart-item-info"><span class="cart-item-name">${sabor}</span><span class="cart-item-qty">${qtd} unidade(s)</span></div><button class="remove-item" data-sabor="${sabor}"><i class="fas fa-trash-can"></i></button>`;
+            cartItemsList.appendChild(div);
+        });
+        document.querySelectorAll('.remove-item').forEach(btn => btn.addEventListener('click', (e) => { const sabor = btn.getAttribute('data-sabor'); if (sabor) alterarQuantidade(sabor, -quantidades[sabor]); }));
+    }
+
+    async function fazerUploadComprovante(pedidoId) {
+        if (!comprovanteFile) return null;
+        const ext = comprovanteFile.name.split('.').pop();
+        const fileName = `comprovantes/${pedidoId}.${ext}`;
+        const storageRef = storage.ref(fileName);
+        await storageRef.put(comprovanteFile);
+        return await storageRef.getDownloadURL();
+    }
+
+    async function finalizarPedido() {
+        if (!authReady || !currentUserUid) {
+            mostrarToast("Aguarde autenticação...", true);
+            return;
+        }
+        const nome = document.getElementById('nomeCliente')?.value.trim();
+        const pagamento = pagamentoSelect.value;
+        if (!nome) { mostrarToast('Digite seu nome completo', true); return; }
+        if (!pagamento) { mostrarToast('Selecione a forma de pagamento', true); return; }
+        if (pagamento === 'Pix' && !comprovanteFile) { mostrarToast('Para Pix, anexe o comprovante', true); return; }
+        const itens = [];
+        let totalUnidades = 0;
+        for (const [sabor, qtd] of Object.entries(quantidades)) if (qtd > 0) { itens.push({ sabor, quantidade: qtd }); totalUnidades += qtd; }
+        if (totalUnidades === 0) { mostrarToast('Adicione pelo menos um geladinho', true); return; }
+        const totalValue = totalUnidades * PRECO;
+        const trocoInfo = pagamento === 'Dinheiro' ? (document.getElementById('trocoPara')?.value || 'Não informado') : null;
+        const observacoes = document.getElementById('observacoes')?.value || '';
+        finalizarBtn.disabled = true;
+        finalizarBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Processando...';
+        try {
+            const cardapioRef = db.collection('config').doc('cardapio');
+            let novoEstoqueAtualizado = { ...estoqueAtual };
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(cardapioRef);
+                if (!doc.exists) throw new Error('Cardápio não encontrado');
+                const estoqueAtualFire = doc.data().estoque || {};
+                itens.forEach(item => { if ((estoqueAtualFire[item.sabor] || 0) < item.quantidade) throw new Error(`Estoque insuficiente para ${item.sabor}`); });
+                itens.forEach(item => { novoEstoqueAtualizado[item.sabor] = (estoqueAtualFire[item.sabor] || 0) - item.quantidade; });
+                transaction.update(cardapioRef, { estoque: novoEstoqueAtualizado });
+            });
+            estoqueAtual = novoEstoqueAtualizado;
+            const pedidoId = Date.now();
+            let comprovanteUrl = null;
+            if (pagamento === 'Pix') comprovanteUrl = await fazerUploadComprovante(pedidoId);
+            const pedidoData = {
+                id: pedidoId,
+                data: new Date().toISOString(),
+                dataLegivel: new Date().toLocaleString('pt-BR'),
+                cliente: nome,
+                clienteNormalizado: nome.toLowerCase().trim(),
+                clienteUid: currentUserUid,
+                tipoPedido: 'retirada',
+                itens: itens,
+                total: totalValue,
+                pagamento: pagamento,
+                trocoPara: trocoInfo,
+                observacoes: observacoes,
+                status: 'pendente',
+                comprovanteUrl: comprovanteUrl || null
+            };
+            await db.collection('pedidos').doc(pedidoId.toString()).set(pedidoData);
+            setLastPedidoId(pedidoId.toString());
+            Object.keys(quantidades).forEach(s => quantidades[s] = 0);
+            renderizarSabores();
+            if (comprovanteInput) comprovanteInput.value = '';
+            if (nomeComprovanteSpan) nomeComprovanteSpan.innerText = '';
+            comprovanteFile = null;
+            await atualizarNotificacaoStatus();
+            iniciarMonitoramentoStatus();
+            mostrarToast(`✅ Pedido #${pedidoId} confirmado!`);
+            setTimeout(() => mostrarToast(`🎉 Pedido #${pedidoId} - Acompanhe no topo!`), 500);
+            // SEM REDIRECIONAMENTO WHATSAPP
+            setTimeout(() => { finalizarBtn.disabled = false; finalizarBtn.innerHTML = '<i class="fas fa-check-circle"></i> Finalizar Pedido'; }, 2000);
+        } catch (error) { mostrarToast(error.message || 'Erro ao finalizar.', true); finalizarBtn.disabled = false; finalizarBtn.innerHTML = '<i class="fas fa-check-circle"></i> Finalizar Pedido'; }
+    }
+
+    async function buscarPedido() {
+        const id = document.getElementById('trackingId').value.trim();
+        if (!id) { mostrarToast('Digite o número do pedido', true); return; }
+        const trackingResultDiv = document.getElementById('trackingResult');
+        const notFoundDiv = document.getElementById('trackingNaoEncontrado');
+        const cancelTrackingBtn = document.getElementById('cancelTrackingBtn');
+        trackingResultDiv.style.display = 'none';
+        notFoundDiv.style.display = 'none';
+        if(cancelTrackingBtn) cancelTrackingBtn.style.display = 'none';
+        try {
+            const doc = await db.collection('pedidos').doc(id).get();
+            if (!doc.exists) { notFoundDiv.style.display = 'block'; return; }
+            const data = doc.data();
+            if (data.clienteUid !== currentUserUid) {
+                mostrarToast("Você não tem permissão para ver este pedido", true);
+                return;
+            }
+            document.getElementById('trackingNumero').innerText = data.id;
+            document.getElementById('trackingCliente').innerText = data.cliente;
+            document.getElementById('trackingItens').innerText = data.itens.map(i => `${i.quantidade}x ${i.sabor}`).join(', ');
+            document.getElementById('trackingPagamento').innerText = data.pagamento;
+            document.getElementById('trackingObservacao').innerHTML = data.observacoes ? `<i class="fas fa-comment"></i> ${data.observacoes}` : '';
+            document.getElementById('trackingData').innerText = data.dataLegivel;
+            const status = data.status || 'pendente';
+            let statusText = '', statusClass = '';
+            if (status === 'pendente') { statusText = '⏳ Aguardando confirmação'; statusClass = 'status-pendente'; }
+            else if (status === 'preparando') { statusText = '🍳 Em preparo'; statusClass = 'status-preparando'; }
+            else if (status === 'pronto') { statusText = '✅ Pronto para retirada'; statusClass = 'status-pronto'; }
+            else if (status === 'retirado') { statusText = '📦 Pedido retirado'; statusClass = 'status-retirado'; }
+            else { statusText = status; statusClass = 'status-pendente'; }
+            document.getElementById('trackingStatusBadge').innerHTML = `<span class="status-badge ${statusClass}"><i class="fas fa-circle-info"></i> ${statusText}</span>`;
+            trackingResultDiv.style.display = 'block';
+            if(cancelTrackingBtn) {
+                if (status === 'pendente') {
+                    cancelTrackingBtn.style.display = 'flex';
+                    cancelTrackingBtn.onclick = () => cancelarPedido(id);
+                } else {
+                    cancelTrackingBtn.style.display = 'none';
+                }
+            }
+        } catch (error) { console.error(error); mostrarToast('Erro ao buscar', true); }
+    }
+
+    async function buscarHistorico() {
+        if (!currentUserUid) return;
+        const historyDiv = document.getElementById('historyList');
+        historyDiv.innerHTML = '<div class="empty-history">Carregando...</div>';
+        try {
+            const snapshot = await db.collection('pedidos')
+                .where('clienteUid', '==', currentUserUid)
+                .orderBy('data', 'desc')
+                .limit(30)
+                .get();
+            if (snapshot.empty) { historyDiv.innerHTML = '<div class="empty-history">Nenhum pedido encontrado</div>'; return; }
+            historyDiv.innerHTML = '';
+            snapshot.forEach(doc => {
+                const p = doc.data();
+                const status = p.status || 'pendente';
+                let statusLabel = status === 'pendente' ? '⏳ Pendente' : status === 'preparando' ? '🍳 Preparando' : status === 'pronto' ? '✅ Pronto' : '📦 Retirado';
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<div class="info"><strong>#${p.id}</strong><br><span class="small">${p.dataLegivel}</span><br><span class="small">${p.itens.reduce((acc,i)=>acc+i.quantidade,0)} itens • R$ ${p.total.toFixed(2).replace('.',',')}</span></div>
+                                <div style="display:flex; align-items:center; gap:8px;"><div class="history-status">${statusLabel}</div>
+                                <button class="btn-repeat" data-pedido='${JSON.stringify(p.itens)}'><i class="fas fa-repeat"></i> Repetir</button></div>`;
+                const repeatBtn = div.querySelector('.btn-repeat');
+                repeatBtn.onclick = (e) => { e.stopPropagation(); const itens = JSON.parse(repeatBtn.getAttribute('data-pedido')); repetirPedido(itens); };
+                div.onclick = (e) => { if (e.target !== repeatBtn && !repeatBtn.contains(e.target)) { document.getElementById('trackingId').value = p.id; buscarPedido(); document.getElementById('trackingId').scrollIntoView({behavior:'smooth'}); } };
+                historyDiv.appendChild(div);
+            });
+        } catch (error) { console.error(error); historyDiv.innerHTML = '<div class="empty-history">Erro ao carregar histórico</div>'; mostrarToast('Erro ao buscar histórico.', true); }
+    }
+
+    function repetirPedido(itens) {
+        let sucesso = true;
+        for (const item of itens) {
+            const sabor = item.sabor;
+            const qtd = item.quantidade;
+            const estoqueDisp = estoqueAtual[sabor] || 0;
+            if (qtd > estoqueDisp) { mostrarToast(`Estoque insuficiente para ${sabor}. Disponível: ${estoqueDisp}`, true); sucesso = false; continue; }
+            quantidades[sabor] = (quantidades[sabor] || 0) + qtd;
+            const qtdSpan = document.getElementById(`qtd_display_${sabor.replace(/\s/g, '_')}`);
+            if (qtdSpan) qtdSpan.innerText = quantidades[sabor];
+        }
+        renderizarSabores();
+        atualizarResumo();
+        if (sucesso) mostrarToast('Itens adicionados ao carrinho! ✅');
+    }
+
+    function limparCarrinho() { Object.keys(quantidades).forEach(s => quantidades[s] = 0); renderizarSabores(); atualizarResumo(); mostrarToast('Carrinho limpo!'); }
+
+    pagamentoSelect.addEventListener('change', () => { const val = pagamentoSelect.value; pixDetalhe.style.display = val === 'Pix' ? 'block' : 'none'; dinheiroDetalhe.style.display = val === 'Dinheiro' ? 'block' : 'none'; });
+    comprovanteInput.addEventListener('change', (e) => { if (e.target.files && e.target.files[0]) { comprovanteFile = e.target.files[0]; nomeComprovanteSpan.innerText = `📎 ${comprovanteFile.name.substring(0, 30)}`; } else { comprovanteFile = null; nomeComprovanteSpan.innerText = ''; } });
+    limparBtn.addEventListener('click', limparCarrinho);
+    finalizarBtn.addEventListener('click', finalizarPedido);
+
+    auth.signInAnonymously()
+        .then(userCredential => {
+            currentUserUid = userCredential.user.uid;
+            authReady = true;
+            iniciarListenerCardapio();
+            if (getLastPedidoId()) iniciarMonitoramentoStatus();
+            buscarHistorico();
+        })
+        .catch(error => {
+            console.error("Erro auth:", error);
+            mostrarToast("Erro de conexão. Recarregue a página.", true);
+            iniciarListenerCardapio();
+        });
+
+    const splash = document.getElementById('splash');
+    const mainApp = document.getElementById('mainApp');
+    function hideSplash() { splash.classList.add('hide'); mainApp.style.opacity = '1'; setTimeout(() => splash.style.display = 'none', 600); }
+    const timeout = setTimeout(hideSplash, 2000);
+    splash.addEventListener('click', () => { clearTimeout(timeout); hideSplash(); });
+    
+    initDarkMode();
+</script>
+</body>
+</html>
