@@ -25,10 +25,12 @@
             color: #1e293b;
             transition: background 0.2s, color 0.2s;
         }
+        /* Tema escuro */
         body.dark {
             background: linear-gradient(135deg, #0f172a 0%, #1e1b2e 100%);
             color: #f1f5f9;
         }
+        /* --- Tela de login --- */
         .login-container {
             min-height: 100vh;
             display: flex;
@@ -101,6 +103,7 @@
             font-size: 0.8rem;
             cursor: pointer;
         }
+        /* --- App principal --- */
         .app-container {
             display: none;
             width: 100%;
@@ -165,6 +168,7 @@
             font-size: 1.2rem;
             text-transform: uppercase;
         }
+        /* Swipe container */
         .swipe-container {
             display: flex;
             overflow-x: auto;
@@ -209,6 +213,7 @@
             border-radius: 10px;
             background: #f97316;
         }
+        /* Cards e componentes */
         .card {
             background: #ffffff;
             border-radius: 28px;
@@ -445,6 +450,7 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* Ajustes de input */
         input, select, textarea {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -775,22 +781,12 @@
         showToast('Chave Pix copiada!');
     };
     function vibrar() { if (navigator.vibrate) navigator.vibrate(200); }
-    
-    // FUNÇÃO CORRIGIDA: usa apenas https://wa.me/ (funciona no WebView do Kodular)
-    function abrirWhatsApp(numero, mensagem) {
-        const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-        // Tenta abrir no mesmo navegador (funciona dentro do WebView)
-        window.location.href = url;
-    }
-    
+    function abrirWhatsApp(numero, mensagem) { window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, '_blank'); }
     function notificarAdmin(pedidoData) {
         const itensStr = pedidoData.itens.map(i => `- ${i.quantidade}x ${i.sabor}`).join('\n');
         const msg = `🍦 *NOVO PEDIDO* 🍦\n*Nº:* ${pedidoData.id}\n*Cliente:* ${pedidoData.cliente}\n*Telefone:* ${pedidoData.telefone || '-'}\n*Itens:*\n${itensStr}\n*Total:* R$ ${pedidoData.total.toFixed(2)}\n*Pagamento:* ${pedidoData.pagamento}\n*Obs:* ${pedidoData.observacoes || '-'}`;
-        // Abre para o primeiro número (e para o segundo, com pequeno atraso)
         setTimeout(() => abrirWhatsApp(NUMEROS_WHATSAPP_ADMIN[0], msg), 200);
-        if (NUMEROS_WHATSAPP_ADMIN.length > 1) {
-            setTimeout(() => abrirWhatsApp(NUMEROS_WHATSAPP_ADMIN[1], msg), 600);
-        }
+        if (NUMEROS_WHATSAPP_ADMIN.length > 1) setTimeout(() => abrirWhatsApp(NUMEROS_WHATSAPP_ADMIN[1], msg), 600);
     }
 
     // Cardápio
@@ -1107,7 +1103,7 @@
     if (logoutBtn) logoutBtn.onclick = () => auth.signOut();
     if (logoutBtn2) logoutBtn2.onclick = () => auth.signOut();
 
-    // Botão modo escuro
+    // Botão modo escuro (já existe no HTML, mas vamos garantir persistência)
     const darkModeToggle = document.createElement('div');
     darkModeToggle.className = 'dark-mode-toggle';
     darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>';
